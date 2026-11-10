@@ -1,0 +1,45 @@
+# main에 들어오면 테스트 → Firebase 호스팅 배포 (https://film-appreciation-meter.web.app)
+# 저장소 Secrets: VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID, VITE_FIREBASE_APP_ID,
+#                 VITE_RECAPTCHA_SITE_KEY, FIREBASE_SERVICE_ACCOUNT_FILM_READING_LESSON (npx firebase-tools init hosting:github 이 만듦)
+name: 배포 (Firebase 호스팅)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VITE_AI_MODE: gemini
+      VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+      VITE_RECAPTCHA_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_SITE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: 설정값 확인
+        run: |
+          for k in VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN VITE_FIREBASE_PROJECT_ID VITE_FIREBASE_APP_ID VITE_RECAPTCHA_SITE_KEY; do
+            if [ -z "${!k}" ]; then echo "::error::저장소 Settings › Secrets and variables › Actions에 $k 를 넣어 주세요"; exit 1; fi
+          done
+      - run: npm ci
+      - name: 단위 테스트
+        run: npm test
+      - name: Firebase 호스팅 배포 (빌드는 firebase.json predeploy가 함)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FILM_READING_LESSON }}
+          projectId: film-reading-lesson
+          target: meter
+          channelId: live

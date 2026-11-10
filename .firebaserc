@@ -1,0 +1,4 @@
+{
+  "projects": { "default": "film-reading-lesson" },
+  "targets": { "film-reading-lesson": { "hosting": { "meter": ["film-appreciation-meter"] } } }
+}

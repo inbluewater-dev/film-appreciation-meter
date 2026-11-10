@@ -1,0 +1,212 @@
+# 영화 감상 능력 측정 도구 — 온톨로지 뼈대 (초안, 2026-11-02)
+# 디지털도서관연구 기말 프로그램 설계 초안의 일부입니다. 11/4 교수님 말씀을 듣고 고칩니다.
+#
+# 구조
+#   감상 차원(ResponseDimension)
+#     ├─ 층(Layer) = 서랍 4개: 지각 · 이해 · 해석 · 평가  (사다리가 아니라 서랍: 순서 없음)
+#     └─ 향유·참여(Enjoyment): 층이 아니므로 Layer에 넣지 않고 따로 표시
+#   판정 지표(Indicator): 차원 하나를 "연다"고 보는 규칙 + 예시 진술(연 예 / 헷갈리기 쉬운 예)
+#   자극(Film) · 발문(Prompt) · 감상문(Response) · 문장(Statement) · 판정(Judgement) · 평정자(Rater)
+#
+# 예시는 영화 <우리들>(윤가은, 2016) 한 편만 채웠습니다.
+# 예시 진술의 출처: 「영화와 삶」(2022 개정) 쪽수 표시. "작성 예"는 설계용으로 새로 쓴 문장(학생 응답 아님).
+# 2026-11-03: 「영화 감상과 비평」 근거 추가, "재미있었다"류는 향유·참여로 판정하기로 정함.
+# 2026-11-10 (v0.2, 프로그램에 넣으며): 측정 본체는 자유 감상문(발문 1) 한 편, 문장마다 주 차원 1 + 보조 1까지,
+#   어느 지표에도 맞지 않는 문장은 '기타'(Purves 500), 시연·검증은 교과서 예시와 가상 감상문으로(실제 학생 자료 없음 → IRB 불필요),
+#   검증은 프로그램 안에서 사람 판정과 Cohen's κ로. 영화 줄거리 요약(fam:synopsis)을 더함.
+# 이 파일은 프로그램(film-appreciation-meter)이 그대로 읽어 AI 판정 지침을 만듭니다. 지표·예시를 고치면 판정 기준이 바뀝니다.
+# 이름공간(fam:)은 임시 주소입니다. 배포 주소가 정해지면 바꿉니다.
+
+@prefix fam:     <http://example.org/film-appreciation#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<http://example.org/film-appreciation> a owl:Ontology ;
+    rdfs:label "영화 감상 능력 측정 온톨로지 (뼈대 초안)"@ko ;
+    dcterms:created "2026-11-02"^^xsd:date ;
+    dcterms:modified "2026-11-10"^^xsd:date ;
+    owl:versionInfo "0.2" ;
+    rdfs:comment "학생 감상문의 문장마다 어느 감상 차원(서랍)을 열었는지 판정하기 위한 온톨로지. 본보기: Purves & Rippere(1968), PISA 2018 채점 지침의 꼴."@ko .
+
+########## 1. 클래스 ##########
+
+fam:ResponseDimension a owl:Class ; rdfs:label "감상 차원"@ko ;
+    rdfs:comment "감상문의 한 문장이 열 수 있는 차원. 네 층과 향유·참여를 아우른다."@ko .
+fam:Layer a owl:Class ; rdfs:subClassOf fam:ResponseDimension ; rdfs:label "층(서랍)"@ko ;
+    rdfs:comment "지각·이해·해석·평가. 순서가 정해진 단계가 아니라 응답이 열거나 열지 않는 서랍이다."@ko .
+fam:PurvesCategory a owl:Class ; rdfs:label "Purves 범주"@ko .
+
+fam:Indicator a owl:Class ; rdfs:label "판정 지표"@ko ;
+    rdfs:comment "어떤 진술이 한 차원을 연다고 보는 조건(규칙)과 예시 진술의 묶음. PISA 채점 지침의 '정답 조건 + 예시 응답' 꼴."@ko .
+fam:AnchorStatement a owl:Class ; rdfs:label "예시 진술"@ko .
+
+fam:Stimulus a owl:Class ; rdfs:label "자극"@ko .
+fam:Film a owl:Class ; rdfs:subClassOf fam:Stimulus ; rdfs:label "영화"@ko .
+fam:Scene a owl:Class ; rdfs:subClassOf fam:Stimulus ; rdfs:label "장면"@ko .
+fam:Prompt a owl:Class ; rdfs:label "발문"@ko .
+fam:Textbook a owl:Class ; rdfs:label "교과서"@ko .
+
+fam:Response a owl:Class ; rdfs:label "감상문"@ko .
+fam:Statement a owl:Class ; rdfs:label "문장(판정 단위)"@ko ;
+    rdfs:comment "프로그램이 문장 부호와 줄바꿈으로 나눈 단위. 프로그램과 사람이 같은 단위를 판정해야 일치도를 잴 수 있다."@ko .
+fam:Judgement a owl:Class ; rdfs:label "판정"@ko ;
+    rdfs:comment "한 문장에 대해 한 평정자가 내린 판정. 주 차원 1개 + 보조 차원 1개까지(2026-11-10 결정). 일치도는 주 차원끼리 비교한다."@ko .
+fam:Rater a owl:Class ; rdfs:label "평정자"@ko .
+fam:SystemRater a owl:Class ; rdfs:subClassOf fam:Rater ; rdfs:label "프로그램 평정자"@ko .
+fam:HumanRater a owl:Class ; rdfs:subClassOf fam:Rater ; rdfs:label "교사 평정자"@ko .
+fam:Profile a owl:Class ; rdfs:label "감상 프로파일"@ko .
+
+########## 2. 속성 ##########
+
+fam:opens a owl:ObjectProperty ; rdfs:label "연다"@ko ;
+    rdfs:domain fam:Indicator ; rdfs:range fam:ResponseDimension .
+fam:rule a owl:DatatypeProperty ; rdfs:label "판정 규칙"@ko ;
+    rdfs:domain fam:Indicator ; rdfs:range xsd:string .
+fam:example a owl:ObjectProperty ; rdfs:label "연 예"@ko ;
+    rdfs:domain fam:Indicator ; rdfs:range fam:AnchorStatement .
+fam:nearMiss a owl:ObjectProperty ; rdfs:label "헷갈리기 쉬운 예"@ko ;
+    rdfs:domain fam:Indicator ; rdfs:range fam:AnchorStatement .
+fam:text a owl:DatatypeProperty ; rdfs:label "문장"@ko ; rdfs:range xsd:string .
+fam:origin a owl:DatatypeProperty ; rdfs:label "출처 종류"@ko ;
+    rdfs:comment "교과서 / 작성 예(설계용으로 새로 쓴 문장)"@ko .
+fam:whyNot a owl:DatatypeProperty ; rdfs:label "열지 않은 까닭"@ko .
+fam:aboutStimulus a owl:ObjectProperty ; rdfs:label "다루는 자극"@ko ; rdfs:range fam:Stimulus .
+fam:inFilm a owl:ObjectProperty ; rdfs:label "속한 영화"@ko ; rdfs:domain fam:Scene ; rdfs:range fam:Film .
+fam:correspondsTo a owl:ObjectProperty ; rdfs:subPropertyOf skos:closeMatch ; rdfs:label "대응하는 Purves 범주"@ko ;
+    rdfs:domain fam:ResponseDimension ; rdfs:range fam:PurvesCategory .
+fam:code a owl:DatatypeProperty ; rdfs:label "코드"@ko .
+fam:color a owl:DatatypeProperty ; rdfs:label "표시 색"@ko ; rdfs:comment "프로그램의 그림에서 쓰는 색(발표 자료와 같은 색)"@ko .
+fam:synopsis a owl:DatatypeProperty ; rdfs:label "줄거리 요약"@ko ;
+    rdfs:comment "판정할 때 인물·사건 이름을 알아보기 위한 요약. 교과서 서술을 바탕으로 줄여 씀(쪽수 표시)."@ko .
+
+fam:director a owl:DatatypeProperty ; rdfs:label "감독"@ko .
+fam:year a owl:DatatypeProperty ; rdfs:label "제작 연도"@ko .
+fam:discussedIn a owl:ObjectProperty ; rdfs:label "다룬 교과서"@ko ; rdfs:range fam:Textbook .
+fam:pages a owl:DatatypeProperty ; rdfs:label "쪽"@ko .
+fam:rating a owl:DatatypeProperty ; rdfs:label "관람 등급"@ko .
+fam:runtimeMinutes a owl:DatatypeProperty ; rdfs:label "상영 시간(분)"@ko ; rdfs:range xsd:integer .
+fam:curriculum a owl:DatatypeProperty ; rdfs:label "교육과정"@ko .
+
+fam:forStimulus a owl:ObjectProperty ; rdfs:label "대상 자극"@ko ; rdfs:domain fam:Prompt ; rdfs:range fam:Stimulus .
+fam:targets a owl:ObjectProperty ; rdfs:label "열고자 하는 차원"@ko ; rdfs:domain fam:Prompt ; rdfs:range fam:ResponseDimension .
+fam:order a owl:DatatypeProperty ; rdfs:label "순번"@ko .
+
+fam:answers a owl:ObjectProperty ; rdfs:label "답한 발문"@ko ; rdfs:domain fam:Response ; rdfs:range fam:Prompt .
+fam:partOf a owl:ObjectProperty ; rdfs:label "속한 감상문"@ko ; rdfs:domain fam:Statement ; rdfs:range fam:Response .
+fam:ofStatement a owl:ObjectProperty ; rdfs:label "판정 대상 문장"@ko ; rdfs:domain fam:Judgement ; rdfs:range fam:Statement .
+fam:primary a owl:ObjectProperty ; rdfs:label "주 차원"@ko ; rdfs:domain fam:Judgement ; rdfs:range fam:ResponseDimension .
+fam:secondary a owl:ObjectProperty ; rdfs:label "보조 차원"@ko ; rdfs:domain fam:Judgement ; rdfs:range fam:ResponseDimension .
+fam:byIndicator a owl:ObjectProperty ; rdfs:label "적용한 지표"@ko ; rdfs:domain fam:Judgement ; rdfs:range fam:Indicator .
+fam:judgedBy a owl:ObjectProperty ; rdfs:label "평정자"@ko ; rdfs:domain fam:Judgement ; rdfs:range fam:Rater .
+fam:evidenceQuote a owl:DatatypeProperty ; rdfs:label "근거 인용(학생 문장 그대로)"@ko ; rdfs:domain fam:Judgement .
+fam:profileOf a owl:ObjectProperty ; rdfs:label "프로파일 대상 감상문"@ko ; rdfs:domain fam:Profile ; rdfs:range fam:Response .
+
+########## 3. 감상 차원 (네 서랍 + 향유) ##########
+
+fam:Perception a fam:Layer ; rdfs:label "지각"@ko ; fam:order 1 ; fam:color "#3D6A9E" ;
+    rdfs:comment "화면에 무엇이 보이고 들렸는지(카메라·소리·색·편집 같은 형식 요소)를 짚는다. 독서 측정에는 없는 영화 고유의 층."@ko .
+fam:Comprehension a fam:Layer ; rdfs:label "이해"@ko ; fam:order 2 ; fam:color "#3F7568" ;
+    rdfs:comment "이야기·인물의 목표·인과를 영화 내용에 맞게 짚는다."@ko ;
+    fam:correspondsTo fam:Purves200 .
+fam:Interpretation a fam:Layer ; rdfs:label "해석"@ko ; fam:order 3 ; fam:color "#7A5BA6" ;
+    rdfs:comment "드러나지 않은 의미·상징·주제를 근거와 함께 읽는다."@ko ;
+    fam:correspondsTo fam:Purves300 .
+fam:Evaluation a fam:Layer ; rdfs:label "평가"@ko ; fam:order 4 ; fam:color "#9C5320" ;
+    rdfs:comment "기준과 근거를 들어 작품이나 표현 방식의 가치를 판단한다."@ko ;
+    fam:correspondsTo fam:Purves400 .
+fam:Enjoyment a fam:ResponseDimension ; rdfs:label "향유·참여"@ko ; fam:order 5 ; fam:color "#6B707A" ;
+    rdfs:comment "공감, 자기 경험 잇기, 인물의 입장 되어 보기. 층이 아니라 네 층이 향하는 곳이므로 프로파일에 따로 표시한다."@ko ;
+    fam:correspondsTo fam:Purves100 .
+fam:Miscellaneous a fam:ResponseDimension ; rdfs:label "기타"@ko ; fam:order 6 ; fam:color "#94A3B8" ;
+    rdfs:comment "어느 지표에도 맞지 않는 문장(관람 상황, 인사말, 영화와 관계없는 말 등). 차원을 연 것으로 세지 않는다."@ko ;
+    fam:correspondsTo fam:Purves500 .
+
+fam:Purves100 a fam:PurvesCategory ; fam:code "100" ; rdfs:label "Engagement-Involvement"@en .
+fam:Purves200 a fam:PurvesCategory ; fam:code "200" ; rdfs:label "Perception"@en ;
+    rdfs:comment "원문이 'analogous to understanding'이라 적음 → 이 온톨로지의 '이해'에 대응."@ko .
+fam:Purves300 a fam:PurvesCategory ; fam:code "300" ; rdfs:label "Interpretation"@en .
+fam:Purves400 a fam:PurvesCategory ; fam:code "400" ; rdfs:label "Evaluation"@en .
+fam:Purves500 a fam:PurvesCategory ; fam:code "500" ; rdfs:label "Miscellaneous"@en .
+
+########## 4. 교과서와 자극 ##########
+
+fam:Textbook_영화와삶 a fam:Textbook ; rdfs:label "영화와 삶"@ko ; fam:curriculum "2022 개정" .
+fam:Textbook_영화의이해 a fam:Textbook ; rdfs:label "영화의 이해"@ko ; fam:curriculum "2022 개정" .
+fam:Textbook_영화감상과비평 a fam:Textbook ; rdfs:label "영화 감상과 비평"@ko ; fam:curriculum "2022 개정" .
+
+fam:Film_우리들 a fam:Film ; rdfs:label "우리들"@ko ;
+    fam:director "윤가은" ; fam:year "2016" ;
+    fam:discussedIn fam:Textbook_영화와삶 ; fam:pages "106, 165–169, 224" ;
+    fam:rating "전체관람가" ; fam:runtimeMinutes 94 ;
+    rdfs:comment "초등학교 4학년 세 소녀(선·지아·보라)의 관계. 등급·상영 시간은 사용자 확인(2026-11-02)."@ko ;
+    fam:synopsis "반에서 따돌림을 받는 선은 방학식 날 전학생 지아를 만나 여름 방학 동안 비밀을 나누며 가까워진다. 개학 뒤 지아는 반의 주축인 보라와 가까워지려고 선을 멀리하고, 상처가 쌓인 선은 반 아이들 앞에서 지아의 비밀을 말해 버린다. 지아도 전 학교에서 따돌림을 당한 아이였다. 피구 게임에서 아이들이 지아가 금을 밟았다고 몰아붙이자 선이 지아 편을 들고, 영화는 둘이 다시 '우리'가 될 수 있을지 묻는 장면으로 끝난다. 봉숭아 물, 우정(실) 팔찌, 피구가 상징으로 쓰인다." ;
+    dcterms:source "영화와 삶 pp.165–168 서술을 줄여 씀" .
+
+fam:Scene_우리들_오프닝피구 a fam:Scene ; rdfs:label "오프닝 피구 장면"@ko ; fam:inFilm fam:Film_우리들 ;
+    fam:discussedIn fam:Textbook_영화와삶 ; fam:pages "167 [그림 Ⅲ-3]" ;
+    rdfs:comment "교과서 캡션: 선의 캐릭터를 잘 보여 주는 오프닝(피구 게임) 장면"@ko .
+
+########## 5. 발문 (초안) ##########
+
+fam:Prompt_우리들_1 a fam:Prompt ; fam:order 1 ; fam:forStimulus fam:Film_우리들 ;
+    fam:text "영화를 보고 떠오르는 대로 자유롭게 감상을 써 보세요." ;
+    rdfs:comment "측정 본체. 차원을 정하지 않는다. 본보기: Purves(1968)의 자유 서술."@ko .
+fam:Prompt_우리들_2 a fam:Prompt ; fam:order 2 ; fam:forStimulus fam:Film_우리들 ; fam:targets fam:Comprehension ;
+    fam:text "선과 지아는 각각 어떤 목표가 있었나요?" ; dcterms:source "영화와 삶 p.169 ①" .
+fam:Prompt_우리들_3 a fam:Prompt ; fam:order 3 ; fam:forStimulus fam:Film_우리들 ; fam:targets fam:Comprehension ;
+    fam:text "지아는 왜 선을 멀리하게 되었을까요?" ; dcterms:source "영화와 삶 p.169 ③" .
+fam:Prompt_우리들_4 a fam:Prompt ; fam:order 4 ; fam:forStimulus fam:Film_우리들 ; fam:targets fam:Interpretation ;
+    fam:text "봉숭아 물, 실 팔찌, 피구는 각각 어떤 의미가 있을까요?" ; dcterms:source "영화와 삶 p.169 ④" .
+fam:Prompt_우리들_5 a fam:Prompt ; fam:order 5 ; fam:forStimulus fam:Scene_우리들_오프닝피구 ; fam:targets fam:Perception ;
+    fam:text "오프닝 피구 장면에서 카메라는 누구를 어떻게 보여 주나요?" ;
+    dcterms:source "새로 씀. 근거: 영화와 삶 p.167 [그림 Ⅲ-3], p.106 한 줄 평" .
+fam:Prompt_우리들_6 a fam:Prompt ; fam:order 6 ; fam:forStimulus fam:Film_우리들 ; fam:targets fam:Evaluation ;
+    fam:text "이 영화에 별점을 주고, 그 까닭을 영화 속 근거를 들어 써 보세요." ;
+    dcterms:source "영화와 삶 p.106 여기서 잠깐!, p.107 비평문" .
+fam:Prompt_우리들_7 a fam:Prompt ; fam:order 7 ; fam:forStimulus fam:Film_우리들 ; fam:targets fam:Enjoyment ;
+    fam:text "되돌려 보고 싶은 장면에서 선이나 지아라면 어떻게 했을까요?" ; dcterms:source "영화와 삶 p.169 ⑥" .
+
+########## 6. 판정 지표 (영화 <우리들> 예시) ##########
+
+fam:Indicator_지각_형식요소 a fam:Indicator ; fam:opens fam:Perception ; fam:aboutStimulus fam:Film_우리들 ;
+    fam:rule "카메라 거리·움직임, 소리·음악, 색·빛, 편집 같은 형식 요소를 구체적으로 짚는다." ;
+    fam:example [ a fam:AnchorStatement ; fam:text "아이들의 세계를 담아내는 투명하고 세밀한 접사" ; fam:origin "교과서" ; dcterms:source "영화와 삶 p.106 한 줄 평" ] ,
+                [ a fam:AnchorStatement ; fam:text "피구 장면에서 카메라가 선의 얼굴만 가까이 찍었다." ; fam:origin "작성 예" ] ;
+    fam:nearMiss [ a fam:AnchorStatement ; fam:text "피구 장면이 기억에 남는다." ; fam:origin "작성 예" ; fam:whyNot "형식 요소를 짚지 않음" ] ,
+                 [ a fam:AnchorStatement ; fam:text "이순신 장군이 위험을 무릅쓰고 직접 북을 치는 장면이 좋았다." ; fam:origin "교과서" ;
+                   dcterms:source "영화 감상과 비평 p.190 (같은 쪽에 로우 앵글·핸드헬드로 고쳐 쓴 글이 있음)" ; fam:whyNot "장면을 지목했지만 형식 요소를 짚지 않음" ] .
+
+fam:Indicator_이해_인물인과 a fam:Indicator ; fam:opens fam:Comprehension ; fam:aboutStimulus fam:Film_우리들 ;
+    fam:rule "사건과 인물의 목표·인과를 영화 내용에 맞게 서술한다." ;
+    fam:example [ a fam:AnchorStatement ; fam:text "지아는 선과 가깝게 지낼수록 주축 멤버와 가까워지기 어려워지니까 선을 멀리하고 만다." ; fam:origin "교과서" ; dcterms:source "영화와 삶 p.166" ] ;
+    fam:nearMiss [ a fam:AnchorStatement ; fam:text "지아는 나쁜 아이다." ; fam:origin "작성 예" ; fam:whyNot "내용 서술이 아니라 판단" ] .
+
+fam:Indicator_해석_상징 a fam:Indicator ; fam:opens fam:Interpretation ; fam:aboutStimulus fam:Film_우리들 ;
+    fam:rule "드러나지 않은 의미·상징·주제를 근거와 함께 제시한다." ;
+    fam:example [ a fam:AnchorStatement ; fam:text "결국 피해자가 피해자를 공격하는 게임이 피구인 셈이다." ; fam:origin "교과서" ; dcterms:source "영화와 삶 p.168" ] ,
+                [ a fam:AnchorStatement ; fam:text "우리‘들’이 되는 지난한 과정, 정직한 카메라" ; fam:origin "교과서" ; dcterms:source "영화와 삶 p.106 한 줄 평" ;
+                  rdfs:comment "한 문장이 두 차원을 여는 예: 주 차원 해석(제목의 '들'과 관계 맺기의 어려움) + 보조 차원 평가 또는 지각(카메라)"@ko ] ;
+    fam:nearMiss [ a fam:AnchorStatement ; fam:text "피구를 하는 장면이 나온다." ; fam:origin "작성 예" ; fam:whyNot "보이는 것을 말했을 뿐" ] .
+
+fam:Indicator_평가_근거판단 a fam:Indicator ; fam:opens fam:Evaluation ; fam:aboutStimulus fam:Film_우리들 ;
+    fam:rule "기준과 근거를 들어 작품이나 표현 방식의 가치를 판단한다." ;
+    dcterms:source "영화와 삶 p.107: 비평문이란 객관적인 기준과 논리적인 근거를 바탕으로 작품의 의미와 가치를 분석한 글" ,
+        "영화 감상과 비평 p.40: 영화의 전체적인 완성도나 표현의 새로움, 주제의 보편성 등을 고루 판단해서 써야 한다" ,
+        "영화 감상과 비평 p.193: 자신의 의견에 대해 합리적인 이유와 설명을 곁들이는 것" ;
+    fam:example [ a fam:AnchorStatement ; fam:text "관계에 대한 면밀한 시선." ; fam:origin "교과서" ; dcterms:source "영화와 삶 p.106 한 줄 평" ] ;
+    fam:nearMiss [ a fam:AnchorStatement ; fam:text "재미있었다." ; fam:origin "작성 예" ;
+                   fam:whyNot "근거 없는 느낌 → 향유·참여로 판정(2026-11-03 결정, 근거: 영화 감상과 비평 p.21). Purves는 '정서적 평가(410)'로 평가에 넣었음" ] .
+
+fam:Indicator_향유_공감 a fam:Indicator ; fam:opens fam:Enjoyment ; fam:aboutStimulus fam:Film_우리들 ;
+    fam:rule "공감하거나 자기 경험에 잇거나 인물의 입장이 되어 본다. 근거 없이 좋고 싫음만 말한 진술도 여기에 둔다." ;
+    dcterms:source "영화 감상과 비평 p.21: 객관적인 판단 기준이 되는 논리적인 근거를 밝히지 않고 영화를 향유한 것만으로도 감상의 가치가 있다" ;
+    fam:example [ a fam:AnchorStatement ; fam:text "나도 친구와 멀어진 적이 있어서 선의 마음을 알 것 같다." ; fam:origin "작성 예" ] .
+
+########## 7. 평정자 ##########
+
+fam:Rater_Gemini a fam:SystemRater ; rdfs:label "프로그램(Gemini)"@ko ;
+    rdfs:comment "이 온톨로지의 판정 지표와 예시 진술을 지시문으로 받아 판정한다. 판정마다 학생 문장을 그대로 인용하고, 프로그램이 원문과 대조한다."@ko .

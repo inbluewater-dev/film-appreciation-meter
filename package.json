@@ -1,0 +1,37 @@
+{
+  "name": "film-appreciation-meter",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "영화 감상 능력 측정기 — 감상문의 문장마다 지각·이해·해석·평가·향유를 판정해 감상 프로파일을 그리고, 사람 판정과의 일치도(Cohen's κ)를 잰다",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "firebase": "^12.19.0",
+    "n3": "^1.17.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^3.24.4",
+    "zod-to-json-schema": "^3.24.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.0",
+    "@types/n3": "^1.21.1",
+    "@types/node": "^22.9.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.5"
+  }
+}
