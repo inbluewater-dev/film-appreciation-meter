@@ -1,15 +1,17 @@
 // 판정 결과의 형식 — AI 응답은 이 스키마로 강제·검증한다
 import { z } from 'zod';
-import { DIMENSION_KEYS, type DimensionKey } from './ontology';
+import { DIMENSION_KEYS, ONTOLOGY, dim, type DimensionKey } from './ontology';
 import type { Sentence } from './segment';
 
 export const SECONDARY_KEYS = ['없음', '지각', '이해', '해석', '평가', '향유·참여'] as const;
+/** 판정 지표 이름 — 온톨로지에 있는 것만 쓸 수 있다(기타는 빈 문자열). AI가 이름을 지어내지 못하게 스키마로 막는다 */
+export const INDICATOR_IDS = ['', ...ONTOLOGY.dimensions.flatMap((d) => d.indicators.map((i) => i.id))] as [string, ...string[]];
 
 export const Judgement = z.object({
   id: z.string(),
   primary: z.enum(DIMENSION_KEYS),
   secondary: z.enum(SECONDARY_KEYS),
-  indicator: z.string(),
+  indicator: z.enum(INDICATOR_IDS),
   quote: z.string(),
   reason: z.string(),
 });
@@ -26,7 +28,8 @@ export interface Rating {
   secondary: DimensionKey | '없음';
 }
 
-/** 정리: 문장 순서대로 하나씩, 없는 문장은 '기타'로 채우고 표시, 보조=주이거나 기타면 '없음' */
+/** 정리: 문장 순서대로 하나씩, 없는 문장은 '기타'로 채우고 표시, 보조=주이거나 기타면 '없음',
+ *  지표는 주 차원의 지표여야 한다(다른 차원의 지표를 적었으면 주 차원의 지표가 하나일 때 그것으로 바로잡고, 아니면 비운다) */
 export function tidy(r: JudgeResult, sentences: Sentence[]): { result: JudgeResult; missing: string[] } {
   const byId = new Map<string, Judgement>();
   for (const j of r.judgements) if (!byId.has(j.id)) byId.set(j.id, j);
@@ -38,7 +41,9 @@ export function tidy(r: JudgeResult, sentences: Sentence[]): { result: JudgeResu
       return { id: s.id, primary: '기타' as const, secondary: '없음' as const, indicator: '', quote: '', reason: '(AI가 이 문장을 판정하지 않음)' };
     }
     const secondary = j.secondary === j.primary || j.primary === '기타' ? ('없음' as const) : j.secondary;
-    return { ...j, secondary };
+    const own = dim(j.primary)?.indicators.map((i) => i.id) ?? [];
+    const indicator = own.includes(j.indicator) ? j.indicator : own.length === 1 ? own[0] : '';
+    return { ...j, secondary, indicator };
   });
   return { result: { judgements, summary: r.summary.trim() }, missing };
 }

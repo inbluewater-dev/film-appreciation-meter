@@ -7,7 +7,8 @@ import { profileOf, promptsFor } from '../../src/lib/profile';
 import { buildPrompt } from '../../src/lib/prompt';
 import { checkQuote } from '../../src/lib/quote';
 import { SAMPLE_ESSAYS } from '../../src/lib/samples';
-import { tidy, type Judgement } from '../../src/lib/schema';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import { JudgeResult, tidy, type Judgement } from '../../src/lib/schema';
 import { splitSentences } from '../../src/lib/segment';
 import { exportJson, importJson, toCsv, type EssayRecord } from '../../src/lib/storage';
 
@@ -72,6 +73,29 @@ describe('판정 정리', () => {
     expect(t.missing).toEqual(['S2']);
     expect(t.result.judgements.map((x) => [x.id, x.primary, x.secondary])).toEqual([['S1', '이해', '없음'], ['S2', '기타', '없음'], ['S3', '기타', '없음']]);
     expect(t.result.summary).toBe('요약');
+  });
+  it('지표 이름은 온톨로지에 있는 것만 받고, 주 차원과 어긋나면 바로잡는다', () => {
+    const schema = JSON.stringify(zodToJsonSchema(JudgeResult));
+    expect(schema).toContain('Indicator_이해_인물인과');
+    expect(JudgeResult.safeParse({ judgements: [{ id: 'S1', primary: '이해', secondary: '없음', indicator: 'Indicator_이해_인과', quote: '', reason: '' }], summary: '' }).success).toBe(false);
+    const ss = splitSentences('가. 나.');
+    const t = tidy(
+      {
+        judgements: [
+          { id: 'S1', primary: '이해', secondary: '없음', indicator: 'Indicator_향유_공감', quote: '', reason: '' },
+          { id: 'S2', primary: '기타', secondary: '없음', indicator: 'Indicator_지각_형식요소', quote: '', reason: '' },
+        ],
+        summary: '',
+      },
+      ss,
+    );
+    expect(t.result.judgements.map((x) => x.indicator)).toEqual(['Indicator_이해_인물인과', '']);
+  });
+  it('지침에 열지 않은 예를 따르라는 규칙과 지표 목록이 들어간다', () => {
+    const p = buildPrompt(film, splitSentences('지아는 나쁜 아이다.'));
+    expect(p).toContain("'열지 않은 예'와 같은 종류의 문장은 그 지표의 차원으로 판정하지 않는다");
+    expect(p).toContain('이름을 새로 만들지 않는다');
+    expect(p).toContain('"지아는 나쁜 아이다." — 내용 서술이 아니라 판단');
   });
 });
 
